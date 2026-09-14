@@ -165,23 +165,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
       <div class="error-msg" id="titleError">书名不能为空</div>
     </div>
     <div class="form-group">
-      <label>类型 <span class="priority-tag p0">P0</span></label>
-      <input type="text" id="bookTypeInput" placeholder="输入或选择类型">
-      <div class="type-quick-picks">
-        <span class="type-pick" onclick="pickType(this)">文学</span>
-        <span class="type-pick" onclick="pickType(this)">科技</span>
-        <span class="type-pick" onclick="pickType(this)">历史</span>
-        <span class="type-pick" onclick="pickType(this)">哲学</span>
-        <span class="type-pick" onclick="pickType(this)">经济</span>
-        <span class="type-pick" onclick="pickType(this)">艺术</span>
-      </div>
+      <label>类型 <span class="required">*</span> <span class="priority-tag p0">P0</span></label>
+      <input type="text" id="bookTypeInput" placeholder="请输入书籍类型">
+      <div class="error-msg" id="typeError">类型不能为空</div>
     </div>
     <div class="form-group">
-      <label>作者 <span class="priority-tag p1">P1</span></label>
-      <input type="text" id="bookAuthorInput" placeholder="选填">
+      <label>作者 <span class="required">*</span> <span class="priority-tag p0">P0</span></label>
+      <input type="text" id="bookAuthorInput" placeholder="请输入作者">
+      <div class="error-msg" id="authorError">作者不能为空</div>
     </div>
     <div class="form-group">
-      <label>简介 <span class="priority-tag p1">P1</span></label>
+      <label>简介 <span class="priority-tag p1">P1 选填</span></label>
       <textarea id="bookDescInput" placeholder="选填"></textarea>
     </div>
     <div class="form-actions">
@@ -269,7 +263,7 @@ function renderListView(main) {
     html += `<div class="book-card" onclick="openDetail(${b.id})">
       <div class="book-info">
         <div class="book-title">${esc(b.title)}</div>
-        ${b.author ? `<div class="book-author">${esc(b.author)}</div>` : ''}
+        <div class="book-author">${esc(b.author)}</div>
         <span class="book-type-tag">${esc(b.type)}</span>
       </div>
       <div class="book-actions">
@@ -299,7 +293,7 @@ function renderGroupView(main) {
       html += `<div class="book-card" onclick="openDetail(${b.id})" style="border-bottom:1px solid #f0f0f0;border:none;border-radius:0;margin:0 -20px;padding:12px 20px">
         <div class="book-info">
           <div class="book-title">${esc(b.title)}</div>
-          ${b.author ? `<div class="book-author">${esc(b.author)}</div>` : ''}
+          <div class="book-author">${esc(b.author)}</div>
         </div>
         <div class="book-actions">
           <button class="btn-icon delete" onclick="event.stopPropagation();openConfirm(${b.id})">删除</button>
@@ -318,32 +312,27 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function openAddModal() {
   document.getElementById('addModal').classList.add('show');
   document.getElementById('titleError').classList.remove('show');
+  document.getElementById('typeError').classList.remove('show');
+  document.getElementById('authorError').classList.remove('show');
   document.getElementById('bookTitleInput').value = '';
   document.getElementById('bookTypeInput').value = '';
   document.getElementById('bookAuthorInput').value = '';
   document.getElementById('bookDescInput').value = '';
-  document.querySelectorAll('.type-pick').forEach(p => p.classList.remove('selected'));
 }
 function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
-
-function pickType(el) {
-  document.querySelectorAll('.type-pick').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('bookTypeInput').value = el.textContent;
-}
 
 function submitBook() {
   const title = document.getElementById('bookTitleInput').value.trim();
   const type = document.getElementById('bookTypeInput').value.trim();
   const author = document.getElementById('bookAuthorInput').value.trim();
   const desc = document.getElementById('bookDescInput').value.trim();
-  if (!title) {
-    document.getElementById('titleError').classList.add('show');
-    return;
-  }
-  document.getElementById('titleError').classList.remove('show');
+  let valid = true;
+  if (!title) { document.getElementById('titleError').classList.add('show'); valid = false; } else { document.getElementById('titleError').classList.remove('show'); }
+  if (!type) { document.getElementById('typeError').classList.add('show'); valid = false; } else { document.getElementById('typeError').classList.remove('show'); }
+  if (!author) { document.getElementById('authorError').classList.add('show'); valid = false; } else { document.getElementById('authorError').classList.remove('show'); }
+  if (!valid) return;
   const id = Date.now();
-  books.push({ id, title, type: type || '未分类', author, desc });
+  books.push({ id, title, type, author, desc });
   closeAddModal();
   showToast('添加成功', 'success');
   currentState = 'list';
