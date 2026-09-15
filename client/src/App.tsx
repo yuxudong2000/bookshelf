@@ -1,23 +1,55 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useBooks } from './hooks/useBooks'
+import { useGroups } from './hooks/useGroups'
+import { fetchBookGroupIds } from './api/groups'
 import type { Book } from './api/books'
-import { ViewToggle, BookList, BookGroup } from './components/BookViews'
+import type { Group } from './api/groups'
+import { ViewToggle, BookList, BookGroup, type ViewMode } from './components/BookViews'
 import { AddBookModal } from './components/AddBookModal'
 import { BookDetail } from './components/BookDetail'
 import { DeleteConfirm } from './components/DeleteConfirm'
 import { Toast } from './components/Toast'
+import { GroupManageModal } from './components/GroupManageModal'
+import { BookGroupPicker } from './components/BookGroupPicker'
+import { CustomGroupView } from './components/CustomGroupView'
 import './App.css'
 
 export default function App() {
   const { books, loading, error, viewMode, setViewMode, addBook, removeBook, reload, groups } = useBooks()
+  const {
+    groups: customGroups,
+    addGroup,
+    updateGroupName,
+    removeGroup,
+    loadGroupBooks,
+    reload: reloadGroups,
+  } = useGroups()
   const [showAdd, setShowAdd] = useState(false)
   const [detailBook, setDetailBook] = useState<Book | null>(null)
+  const [detailBookGroups, setDetailBookGroups] = useState<Group[] | undefined>(undefined)
   const [deleteTarget, setDeleteTarget] = useState<Book | null>(null)
+  const [showGroupManage, setShowGroupManage] = useState(false)
+  const [pickerBook, setPickerBook] = useState<Book | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
   }
+
+  useEffect(() => {
+    if (!detailBook) {
+      setDetailBookGroups(undefined)
+      return
+    }
+    let cancelled = false
+    fetchBookGroupIds(detailBook.id)
+      .then(ids => {
+        if (cancelled) return
+        setDetailBookGroups(customGroups.filter(g => ids.includes(g.id)))
+      })
+      .catch(() => { if (!cancelled) setDetailBookGroups([]) })
+    return () => { cancelled = true }
+  }, [detailBook, customGroups])
 
   const handleAdd = async (book: { title: string; type: string; author: string; description?: string }) => {
     try {
@@ -36,8 +68,17 @@ export default function App() {
       showToast('删除成功', 'success')
       setDeleteTarget(null)
       setDetailBook(null)
+      reloadGroups()
     } catch (e) {
       showToast((e as Error).message, 'error')
+    }
+  }
+
+  const handleCreateGroup = async (name: string) => {
+    try {
+      await addGroup(name)
+    } catch (e) {
+      throw e
     }
   }
 
@@ -46,7 +87,8 @@ export default function App() {
       <div className="header">
         <h1>我的书架</h1>
         <div className="header-actions">
-          <ViewToggle viewMode={viewMode} onChange={setViewMode} />
+          <ViewToggle viewMode={viewMode as ViewMode} onChange={setViewMode as (v: ViewMode) => void} />
+          <button className="btn-add" onClick={() => setShowGroupManage(true)} style={{ background: '#888' }}>分组管理</button>
           <button className="btn-add" onClick={() => setShowAdd(true)}>+ 添加书籍</button>
         </div>
       </div>
@@ -78,12 +120,52 @@ export default function App() {
         {!loading && !error && books.length > 0 && viewMode === 'group' && (
           <BookGroup groups={groups()} onDetail={setDetailBook} onDelete={b => setDeleteTarget(b)} />
         )}
+        {!loading && !error && (viewMode as ViewMode) === 'custom-group' && (
+          <CustomGroupView
+            groups={customGroups}
+            loadGroupBooks={loadGroupBooks}
+            onDetail={setDetailBook}
+            onDelete={b => setDeleteTarget(b)}
+            onCreateGroup={() => setShowGroupManage(true)}
+          />
+        )}
       </div>
 
       {showAdd && <AddBookModal onSubmit={handleAdd} onClose={() => setShowAdd(false)} />}
-      {detailBook && <BookDetail book={detailBook} onClose={() => setDetailBook(null)} onDelete={() => setDeleteTarget(detailBook)} />}
+      {detailBook && (
+        <BookDetail
+          book={detailBook}
+          bookGroups={detailBookGroups}
+          onClose={() => setDetailBook(null)}
+          onDelete={() => setDeleteTarget(detailBook)}
+          onManageGroups={() => setPickerBook(detailBook)}
+        />
+      )}
       {deleteTarget && <DeleteConfirm onConfirm={handleDeleteConfirm} onCancel={() => setDeleteTarget(null)} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {showGroupManage && (
+        <GroupManageModal
+          groups={customGroups}
+          onCreate={handleCreateGroup}
+          onRename={async (id, name) => { await updateGroupName(id, name) }}
+          onDelete={async id => { await removeGroup(id) }}
+          onClose={() => setShowGroupManage(false)}
+        />
+      )}
+      {pickerBook && (
+        <BookGroupPicker
+          book={pickerBook}
+          groups={customGroups}
+          onClose={() => setPickerBook(null)}
+          onSaved={() => {
+            reloadGroups()
+            showToast('设置分组成功', 'success')
+            if (detailBook && pickerBook && detailBook.id === pickerBook.id) {
+              fetchBookGroupIds(pickerBook.id).then(ids => setDetailBookGroups(customGroups.filter(g => ids.includes(g.id))))
+            }
+          }}
+        />
+      )}
     </>
   )
 }

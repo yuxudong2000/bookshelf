@@ -14,9 +14,16 @@ export interface Book {
   created_at: string
 }
 
+export interface Group {
+  id: number
+  name: string
+  created_at: string
+}
+
 export function createDb(dbPath?: string): Database.Database {
   const db = new Database(dbPath || ':memory:')
   db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
   db.exec(`
     CREATE TABLE IF NOT EXISTS books (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +32,20 @@ export function createDb(dbPath?: string): Database.Database {
       author TEXT NOT NULL,
       description TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS book_groups (
+      book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+      PRIMARY KEY (book_id, group_id)
     )
   `)
   return db
