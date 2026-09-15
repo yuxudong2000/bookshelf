@@ -113,3 +113,52 @@
 - 🔴 必须修改 **0** 项
 - 🟡 建议修改 **0** 项
 - 🟢 可选优化 **1** 项（遗留，不影响通过）
+
+---
+
+## 增量复审（复审 #2）— 独立验收测试代码
+
+- **增量复审时间**：2026-09-15
+- **上次审查 head SHA**：`95bedbc25184d31fb0efca83166cfc1c5808d91f`
+- **新候选 SHA**：`c9b3bfd4a8bd41e01af0840179a01cc46593a9b6`
+- **变更范围**：`e2e/api/books.api.acceptance.test.ts`、`e2e/ui/acceptance.e2e.test.ts`、`features/2026-09-14-01a09efe-bookshelf-mvp/test-report.md`
+
+### 增量变更核查
+
+**`e2e/api/books.api.acceptance.test.ts`**（黑盒 API 验收，6 个测试）
+
+- 使用真实 HTTP 请求对 `http://localhost:3001` 进行黑盒测试，与产品代码完全隔离 ✅
+- `beforeAll`/`afterAll` 创建和清理测试数据，隔离良好 ✅
+- 覆盖 F01-AC05、F02-AC02、F02-AC03、F02-AC04、F02-AC05、F05-AC04 ✅
+- 响应字段断言明确（id/title/type/author 逐一校验）✅
+
+**`e2e/ui/acceptance.e2e.test.ts`**（UI E2E 验收，23 个测试）
+
+- 使用真实后端，无全局 Mock，仅在必要时（空态、错误场景）局部 mock ✅
+- 每个 `describe` 块独立管理测试数据（`beforeAll` 创建、`afterAll` 清理），隔离无污染 ✅
+- `playwright.config.ts` 配置 `webServer` 自动启动前后端服务，可独立运行 ✅
+- F03-AC04 使用 `Date.now()` 生成唯一类型名，防止并发污染 ✅
+- 全部 24 条验收条件逐一覆盖，与 requirements.md 验收编号对应 ✅
+
+### 新增问题
+
+| 级别 | 位置（文件） | 问题描述 | 修改建议 |
+|------|------------|---------|---------|
+| 🟡 建议修改 | `e2e/api/books.api.acceptance.test.ts`（describe 标签） | describe 块标题为 "F02-AC03: POST /api/books - 缺少必填字段校验"，但其中同时包含 F02-AC04 的测试用例，标签与内容不符，可读性略差 | 将标题改为 "F02-AC03 & F02-AC04: POST /api/books - 必填字段校验" 或拆成两个 describe 块 |
+| 🟢 可选优化 | `e2e/ui/acceptance.e2e.test.ts`（F01-AC04 测试） | `resolveDelay!` 使用 TypeScript 非空断言，且延迟 Promise 方式略显脆弱；实际运行可靠，属风格层面改进空间 | 可改为将 `resolveDelay` 初始化为 `() => {}` 的 `let` 声明消除非空断言 |
+
+### 遗留未解决项
+
+| 级别 | 位置 | 说明 |
+|------|------|------|
+| 🟢 可选优化 | `features/.../technical-design.md` | 设计文档组件文件结构与实际实现不符（持续遗留，不影响通过） |
+
+### 增量复审结论
+
+**通过** ✅
+
+独立验收测试代码质量良好：测试结构清晰、数据隔离完整、覆盖所有 24 条验收条件、黑盒 API 与 UI E2E 双路径验证。无 🔴 必须修改问题。
+
+- 🔴 必须修改 **0** 项
+- 🟡 建议修改 **1** 项（describe 标签，不影响通过）
+- 🟢 可选优化 **2** 项
