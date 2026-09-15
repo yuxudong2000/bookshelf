@@ -1,10 +1,13 @@
 import type { Book } from '../api/books'
 
-export function ViewToggle({ viewMode, onChange }: { viewMode: 'list' | 'group'; onChange: (v: 'list' | 'group') => void }) {
+export type ViewMode = 'list' | 'group' | 'custom-group'
+
+export function ViewToggle({ viewMode, onChange }: { viewMode: ViewMode; onChange: (v: ViewMode) => void }) {
   return (
     <div className="view-toggle">
       <button className={viewMode === 'list' ? 'active' : ''} onClick={() => onChange('list')}>列表</button>
       <button className={viewMode === 'group' ? 'active' : ''} onClick={() => onChange('group')}>分组</button>
+      <button className={viewMode === 'custom-group' ? 'active' : ''} onClick={() => onChange('custom-group')}>自定义分组</button>
     </div>
   )
 }

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>书架分组能力 - 交互原型</title>
+<style>
+  :root {
+    --primary: #4a6cf7;
+    --border: #e2e5ec;
+    --bg: #f6f7fb;
+    --text: #222;
+    --muted: #888;
+    --danger: #e2554e;
+    --success: #2fa86a;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 16px; cursor: pointer; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px; }
+  button { border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; background: var(--primary); color: #fff; }
+  button.secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .group-card .group-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .group-title { font-weight: 600; font-size: 15px; }
+  .group-count { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .group-actions { display: flex; gap: 6px; }
+  .group-actions button { padding: 4px 8px; font-size: 12px; }
+  .book-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .book-row:first-of-type { border-top: none; }
+  .book-meta { color: var(--muted); font-size: 12px; }
+  .empty { text-align: center; color: var(--muted); padding: 30px; font-size: 13px; }
+  .badge { display: inline-block; background: #eef1ff; color: var(--primary); border-radius: 4px; padding: 2px 6px; font-size: 11px; margin-left: 4px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 10px; padding: 20px; width: 340px; }
+  .modal h3 { margin: 0 0 12px; font-size: 15px; }
+  .modal label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .modal input[type=text] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; margin-bottom: 6px; }
+  .error-text { color: var(--danger); font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .checkbox-list { max-height: 180px; overflow-y: auto; margin-bottom: 10px; }
+  .checkbox-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 6px; font-size: 13px; color: #fff; display: none; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+  .toast.show { display: block; }
+  .priority-note { font-size: 11px; color: var(--muted); margin-top: 24px; border-top: 1px dashed var(--border); padding-top: 12px; }
+  .p0 { color: #c0392b; font-weight: 600; }
+  .p1 { color: #d68910; font-weight: 600; }
+  .p2 { color: #7f8c8d; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>书架分组能力 — 交互原型（NEWW-6）</h1>
+<div class="subtitle">覆盖 F06 分组管理 / F07 书籍分组归属 / F08 按分组浏览。灰底为已有 MVP 能力入口示意，不在本次实现范围。</div>
+
+<div class="tabs">
+  <div class="tab secondary" style="color:#bbb;cursor:default;">书架总览（既有）</div>
+  <div class="tab secondary" style="color:#bbb;cursor:default;">类型分组（既有 F03）</div>
+  <div class="tab active" onclick="switchTab('groups')">自定义分组（本次 F08）</div>
+</div>
+
+<!-- ============ 自定义分组视图 ============ -->
+<div class="panel active" id="panel-groups">
+  <div class="toolbar">
+    <button class="secondary" onclick="setState('loading')">模拟：加载中</button>
+    <button class="secondary" onclick="setState('empty')">模拟：空态</button>
+    <button class="secondary" onclick="setState('normal')">模拟：正常</button>
+    <button onclick="openModal('create-group')">＋ 新建分组</button>
+  </div>
+
+  <!-- 加载态 -->
+  <div id="state-loading" class="empty" style="display:none;">正在加载分组…</div>
+
+  <!-- 空态：尚未创建任何分组 (F08-AC04) -->
+  <div id="state-empty" class="card empty" style="display:none;">
+    还没有分组，创建一个开始整理书架吧
+    <div style="margin-top:10px;"><button onclick="openModal('create-group')">＋ 新建分组</button></div>
+  </div>
+
+  <!-- 正常态：分组列表 -->
+  <div id="state-normal">
+    <div class="card group-card">
+      <div class="group-head">
+        <div><span class="group-title">在读</span><span class="group-count">2 本</span></div>
+        <div class="group-actions">
+          <button class="secondary" onclick="openModal('rename-group', '在读')">重命名</button>
+          <button class="danger" onclick="openModal('delete-group', '在读')">删除</button>
+        </div>
+      </div>
+      <div class="book-row">
+        <div>《三体》<span class="book-meta">刘慈欣 · 科幻</span><span class="badge">同时在「书单A」</span></div>
+        <button class="secondary" onclick="openModal('assign-group', '三体')">设置分组</button>
+      </div>
+      <div class="book-row">
+        <div>《人类简史》<span class="book-meta">尤瓦尔·赫拉利 · 历史</span></div>
+        <button class="secondary" onclick="openModal('assign-group', '人类简史')">设置分组</button>
+      </div>
+    </div>
+
+    <div class="card group-card">
+      <div class="group-head">
+        <div><span class="group-title">书单A</span><span class="group-count">1 本</span></div>
+        <div class="group-actions">
+          <button class="secondary" onclick="openModal('rename-group', '书单A')">重命名</button>
+          <button class="danger" onclick="openModal('delete-group', '书单A')">删除</button>
+        </div>
+      </div>
+      <div class="book-row">
+        <div>《三体》<span class="book-meta">刘慈欣 · 科幻</span></div>
+        <button class="secondary" onclick="openModal('assign-group', '三体')">设置分组</button>
+      </div>
+    </div>
+
+    <!-- 空组示例 (F08-AC02) -->
+    <div class="card group-card">
+      <div class="group-head">
+        <div><span class="group-title">收藏</span><span class="group-count">0 本</span></div>
+        <div class="group-actions">
+          <button class="secondary" onclick="openModal('rename-group', '收藏')">重命名</button>
+          <button class="danger" onclick="openModal('delete-group', '收藏')">删除</button>
+        </div>
+      </div>
+      <div class="empty" style="padding:16px;">该分组还没有书</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 新建分组弹窗 F06-AC01/02/03 ============ -->
+<div class="modal-overlay" id="modal-create-group">
+  <div class="modal">
+    <h3>新建分组</h3>
+    <label>分组名称</label>
+    <input type="text" id="create-group-input" placeholder="例如：在读 / 收藏 / 书单A">
+    <div class="error-text" id="create-group-error"></div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('create-group')">取消</button>
+      <button onclick="submitCreateGroup()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 重命名分组弹窗 F06-AC04 ============ -->
+<div class="modal-overlay" id="modal-rename-group">
+  <div class="modal">
+    <h3>重命名分组</h3>
+    <label>新名称</label>
+    <input type="text" id="rename-group-input">
+    <div class="error-text" id="rename-group-error"></div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('rename-group')">取消</button>
+      <button onclick="submitRenameGroup()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 删除分组确认弹窗 F06-AC05/06 ============ -->
+<div class="modal-overlay" id="modal-delete-group">
+  <div class="modal">
+    <h3>删除分组</h3>
+    <p style="font-size:13px;">确定要删除「<span id="delete-group-name"></span>」分组吗？分组内的书籍不会被删除，仅解除分组归属关系。</p>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('delete-group')">取消</button>
+      <button class="danger" onclick="submitDeleteGroup()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 设置书籍分组归属弹窗 F07 ============ -->
+<div class="modal-overlay" id="modal-assign-group">
+  <div class="modal">
+    <h3>设置分组 — <span id="assign-book-name"></span></h3>
+    <div class="checkbox-list" id="assign-checkbox-list">
+      <div class="checkbox-item"><input type="checkbox" checked> 在读</div>
+      <div class="checkbox-item"><input type="checkbox" checked> 书单A</div>
+      <div class="checkbox-item"><input type="checkbox"> 收藏</div>
+    </div>
+    <div class="error-text" id="assign-group-error"></div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('assign-group')">取消</button>
+      <button onclick="submitAssignGroup()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="priority-note">
+  <div><span class="p0">P0（核心流程）</span>：新建分组（F06-AC01/02/03）、设置书籍分组归属（F07-AC01~03/05）、按分组浏览正常态与空态（F08-AC01/02/04）</div>
+  <div><span class="p1">P1（体验完整性）</span>：重命名分组（F06-AC04）、删除分组确认与取消（F06-AC05/06）、归属失败回退提示（F07-AC06）、书籍同属多分组标注（F07-AC04/F08-AC03）、删除书籍联动清除归属（F05/F07-AC07/F08-AC06）</div>
+  <div><span class="p2">P2（可选）</span>：加载态指示器细节动效、分组列表为空时的引导文案样式打磨</div>
+</div>
+
+<script>
+function switchTab(){}
+function setState(state) {
+  document.getElementById('state-loading').style.display = state === 'loading' ? 'block' : 'none';
+  document.getElementById('state-empty').style.display = state === 'empty' ? 'block' : 'none';
+  document.getElementById('state-normal').style.display = state === 'normal' ? 'block' : 'none';
+}
+function openModal(name, ctx) {
+  document.getElementById('modal-' + name).classList.add('show');
+  if (name === 'rename-group') {
+    document.getElementById('rename-group-input').value = ctx;
+    document.getElementById('rename-group-error').textContent = '';
+  }
+  if (name === 'delete-group') {
+    document.getElementById('delete-group-name').textContent = ctx;
+  }
+  if (name === 'assign-group') {
+    document.getElementById('assign-book-name').textContent = ctx;
+    document.getElementById('assign-group-error').textContent = '';
+  }
+  if (name === 'create-group') {
+    document.getElementById('create-group-input').value = '';
+    document.getElementById('create-group-error').textContent = '';
+  }
+}
+function closeModal(name) {
+  document.getElementById('modal-' + name).classList.remove('show');
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2000);
+}
+function submitCreateGroup() {
+  const v = document.getElementById('create-group-input').value.trim();
+  if (!v) {
+    document.getElementById('create-group-error').textContent = '分组名称不能为空';
+    return;
+  }
+  if (v === '在读' || v === '书单A' || v === '收藏') {
+    document.getElementById('create-group-error').textContent = '分组名称已存在';
+    return;
+  }
+  closeModal('create-group');
+  showToast('分组「' + v + '」创建成功', 'success');
+}
+function submitRenameGroup() {
+  const v = document.getElementById('rename-group-input').value.trim();
+  if (!v) {
+    document.getElementById('rename-group-error').textContent = '分组名称不能为空';
+    return;
+  }
+  closeModal('rename-group');
+  showToast('分组已重命名为「' + v + '」', 'success');
+}
+function submitDeleteGroup() {
+  closeModal('delete-group');
+  showToast('分组已删除，书籍归属关系已解除', 'success');
+}
+function submitAssignGroup() {
+  closeModal('assign-group');
+  const simulateFail = false;
+  if (simulateFail) {
+    showToast('设置分组失败，请重试', 'error');
+  } else {
+    showToast('分组设置已保存', 'success');
+  }
+}
+</script>
+</body>
+</html>

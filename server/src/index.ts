@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { getDb } from './db.js'
 import { createBooksRouter } from './routes/books.js'
+import { createGroupsRouter } from './routes/groups.js'
 import { errorHandler } from './middleware/error.js'
 
 const app = express()
@@ -12,6 +13,7 @@ app.use(express.json())
 
 const db = getDb()
 app.use('/api', createBooksRouter(db))
+app.use('/api', createGroupsRouter(db))
 
 app.use(errorHandler)
 

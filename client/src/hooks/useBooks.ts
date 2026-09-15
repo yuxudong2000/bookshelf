@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchBooks, createBook, deleteBook, type Book } from '../api/books'
 
-type ViewMode = 'list' | 'group'
+type ViewMode = 'list' | 'group' | 'custom-group'
 
 export function useBooks() {
   const [books, setBooks] = useState<Book[]>([])
