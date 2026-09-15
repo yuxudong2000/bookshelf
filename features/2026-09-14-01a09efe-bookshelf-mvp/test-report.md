@@ -5,7 +5,7 @@
 - **测试时间**：2026-09-15 10:45–11:00
 - **被测 Feature 分支**：`feature/01a09efe-bookshelf-mvp`
 - **候选 SHA**：`95bedbc25184d31fb0efca83166cfc1c5808d91f`
-- **测试代码 SHA**：（见提交）
+- **测试代码 SHA**：`485da9224ef1000ce60949f991fce28ce7b0a515`
 - **执行命令**：
   - API 黑盒：`cd e2e && npx vitest run api/ --reporter=verbose`
   - UI E2E：`cd e2e && npx playwright test ui/ --reporter=list`
