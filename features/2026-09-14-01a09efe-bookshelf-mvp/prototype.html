@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人书架 MVP - 交互原型</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
+
+/* Header */
+.header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
+
+/* View Toggle */
+.view-toggle { display: flex; background: #eee; border-radius: 8px; overflow: hidden; }
+.view-toggle button { padding: 8px 16px; border: none; background: transparent; cursor: pointer; font-size: 14px; }
+.view-toggle button.active { background: #4a90d9; color: #fff; }
+
+/* Add Button */
+.btn-add { background: #4a90d9; color: #fff; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.btn-add:hover { background: #3a7bc8; }
+
+/* Main Content */
+.main { max-width: 960px; margin: 24px auto; padding: 0 24px; }
+
+/* Loading State */
+.loading { text-align: center; padding: 80px 0; color: #888; }
+.spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 80px 0; }
+.empty-state .icon { font-size: 64px; margin-bottom: 16px; }
+.empty-state p { color: #888; font-size: 16px; margin-bottom: 20px; }
+
+/* Book List (List View) */
+.book-list { display: flex; flex-direction: column; gap: 12px; }
+.book-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: box-shadow 0.2s; }
+.book-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.book-info { flex: 1; }
+.book-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.book-author { font-size: 13px; color: #888; margin-bottom: 6px; }
+.book-type-tag { display: inline-block; background: #e8f0fe; color: #4a90d9; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+.book-actions { display: flex; gap: 8px; }
+.btn-icon { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; color: #666; }
+.btn-icon.delete { color: #d9534f; border-color: #f5c6cb; }
+.btn-icon.delete:hover { background: #fdf0ef; }
+
+/* Group View */
+.group-view { display: flex; flex-direction: column; gap: 20px; }
+.group-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; }
+.group-header { padding: 12px 20px; background: #fafafa; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.group-header h3 { font-size: 15px; font-weight: 600; }
+.group-count { font-size: 13px; color: #888; background: #eee; padding: 2px 10px; border-radius: 10px; }
+.group-body { padding: 0 20px 16px; }
+.group-body .book-card { border: none; border-bottom: 1px solid #f0f0f0; border-radius: 0; margin: 0 -20px; padding: 12px 20px; }
+.group-body .book-card:last-child { border-bottom: none; }
+.group-empty { padding: 16px 20px; color: #aaa; font-size: 14px; text-align: center; }
+
+/* Modal Overlay */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 16px; padding: 32px; width: 90%; max-width: 480px; position: relative; }
+.modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+.modal h2 { font-size: 18px; margin-bottom: 20px; }
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.form-group label .required { color: #d9534f; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.form-group textarea { resize: vertical; min-height: 60px; }
+.form-group .error-msg { color: #d9534f; font-size: 12px; margin-top: 4px; display: none; }
+.form-group .error-msg.show { display: block; }
+.type-quick-picks { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.type-pick { padding: 4px 12px; border: 1px solid #ddd; border-radius: 16px; font-size: 12px; cursor: pointer; background: #fafafa; }
+.type-pick.selected { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+
+/* Form Buttons */
+.form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.btn-cancel { padding: 8px 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; }
+.btn-submit { padding: 8px 24px; background: #4a90d9; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Confirm Dialog */
+.confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; display: none; align-items: center; justify-content: center; }
+.confirm-overlay.show { display: flex; }
+.confirm-box { background: #fff; border-radius: 16px; padding: 32px; text-align: center; max-width: 360px; }
+.confirm-box p { font-size: 15px; margin-bottom: 24px; }
+.confirm-box .btn-row { display: flex; gap: 12px; justify-content: center; }
+.btn-confirm-danger { padding: 8px 24px; background: #d9534f; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+
+/* Toast */
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 400; display: none; transform: translateX(0); }
+.toast.show { display: block; animation: slideIn 0.3s ease; }
+.toast.success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+.toast.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+/* Detail Panel */
+.detail-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: center; justify-content: center; }
+.detail-overlay.show { display: flex; }
+.detail-panel { background: #fff; border-radius: 16px; padding: 32px; width: 90%; max-width: 520px; position: relative; }
+.detail-panel h2 { font-size: 20px; margin-bottom: 8px; }
+.detail-meta { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.detail-meta span { font-size: 13px; padding: 4px 12px; border-radius: 12px; }
+.detail-meta .type { background: #e8f0fe; color: #4a90d9; }
+.detail-meta .author { background: #f0f0f0; color: #666; }
+.detail-desc { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 24px; }
+.detail-actions { display: flex; gap: 12px; }
+
+/* Priority Annotations */
+.priority-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 8px; }
+.priority-tag.p0 { background: #fee; color: #c00; }
+.priority-tag.p1 { background: #fff3e0; color: #e65100; }
+.priority-tag.p2 { background: #e8f5e9; color: #2e7d32; }
+
+/* State indicator bar */
+.state-bar { background: #fafafa; padding: 8px 24px; border-bottom: 1px solid #e0e0e0; font-size: 12px; color: #888; display: flex; gap: 24px; }
+.state-bar button { background: none; border: none; cursor: pointer; color: #4a90d9; font-size: 12px; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- State Indicator Bar (for prototype demo) -->
+<div class="state-bar">
+  <span>当前原型状态切换：</span>
+  <button onclick="showState('loading')">加载态</button>
+  <button onclick="showState('empty')">空态</button>
+  <button onclick="showState('list')">列表态（有数据）</button>
+  <button onclick="showState('group')">分组态</button>
+  <button onclick="showState('error')">错误态</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <h1>我的书架</h1>
+  <div class="header-actions">
+    <div class="view-toggle" id="viewToggle">
+      <button class="active" onclick="switchView('list')">列表</button>
+      <button onclick="switchView('group')">分组</button>
+    </div>
+    <button class="btn-add" onclick="openAddModal()">+ 添加书籍</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Main Content -->
+<div class="main" id="mainContent">
+  <!-- States will be rendered by JS -->
+</div>
+
+<!-- Add Book Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAddModal()">&times;</button>
+    <h2>添加书籍 <span class="priority-tag p0">P0</span></h2>
+    <div class="form-group">
+      <label>书名 <span class="required">*</span></label>
+      <input type="text" id="bookTitleInput" placeholder="请输入书名">
+      <div class="error-msg" id="titleError">书名不能为空</div>
+    </div>
+    <div class="form-group">
+      <label>类型 <span class="required">*</span> <span class="priority-tag p0">P0</span></label>
+      <input type="text" id="bookTypeInput" placeholder="请输入书籍类型">
+      <div class="error-msg" id="typeError">类型不能为空</div>
+    </div>
+    <div class="form-group">
+      <label>作者 <span class="required">*</span> <span class="priority-tag p0">P0</span></label>
+      <input type="text" id="bookAuthorInput" placeholder="请输入作者">
+      <div class="error-msg" id="authorError">作者不能为空</div>
+    </div>
+    <div class="form-group">
+      <label>简介 <span class="priority-tag p1">P1 选填</span></label>
+      <textarea id="bookDescInput" placeholder="选填"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeAddModal()">取消</button>
+      <button class="btn-submit" onclick="submitBook()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Dialog -->
+<div class="confirm-overlay" id="confirmDelete">
+  <div class="confirm-box">
+    <p>确定要删除这本书吗？</p>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeConfirm()">取消</button>
+      <button class="btn-confirm-danger" onclick="confirmDeleteBook()">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel" id="detailPanel">
+    <button class="modal-close" onclick="closeDetail()">&times;</button>
+    <h2 id="detailTitle"></h2>
+    <div class="detail-meta" id="detailMeta"></div>
+    <div class="detail-desc" id="detailDesc"></div>
+    <div class="detail-actions">
+      <button class="btn-icon delete" onclick="deleteFromDetail()">删除书籍</button>
+      <button class="btn-cancel" onclick="closeDetail()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Mock Data
+let books = [
+  { id: 1, title: '百年孤独', type: '文学', author: '加西亚·马尔克斯', desc: '魔幻现实主义文学的代表作，描写了布恩迪亚家族七代人的传奇故事。' },
+  { id: 2, title: '三体', type: '科技', author: '刘慈欣', desc: '中国科幻文学里程碑，讲述人类文明与三体文明的恢弘对决。' },
+  { id: 3, title: '人类简史', type: '历史', author: '尤瓦尔·赫拉利', desc: '从认知革命到科学革命，重新审视人类历史的发展脉络。' },
+  { id: 4, title: '活着', type: '文学', author: '余华', desc: '以简洁有力的叙述，讲述了福贵苦难而坚韧的一生。' },
+  { id: 5, title: '黑客与画家', type: '科技', author: '保罗·格雷厄姆', desc: '关于编程、创业与创造力的思考合集。' },
+];
+
+let currentView = 'list';
+let currentState = 'list';
+let deleteTargetId = null;
+
+function showState(state) {
+  currentState = state;
+  render();
+}
+
+function switchView(view) {
+  currentView = view;
+  const btns = document.querySelectorAll('#viewToggle button');
+  btns.forEach((b, i) => b.classList.toggle('active', (i === 0 && view === 'list') || (i === 1 && view === 'group')));
+  render();
+}
+
+function render() {
+  const main = document.getElementById('mainContent');
+  if (currentState === 'loading') {
+    main.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:16px">加载中...</p></div>';
+    return;
+  }
+  if (currentState === 'error') {
+    main.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p style="color:#d9534f">加载失败，请重试</p><button class="btn-add" onclick="showState(\'list\')" style="margin-top:8px;background:#888">重新加载</button></div>';
+    return;
+  }
+  if (currentState === 'empty' || books.length === 0) {
+    main.innerHTML = '<div class="empty-state"><div class="icon">📚</div><p>书架空空如也，快去添加第一本书吧</p><button class="btn-add" onclick="openAddModal()">+ 添加书籍</button></div>';
+    return;
+  }
+  if (currentView === 'group') {
+    renderGroupView(main);
+    return;
+  }
+  renderListView(main);
+}
+
+function renderListView(main) {
+  let html = '<div class="book-list">';
+  books.forEach(b => {
+    html += `<div class="book-card" onclick="openDetail(${b.id})">
+      <div class="book-info">
+        <div class="book-title">${esc(b.title)}</div>
+        <div class="book-author">${esc(b.author)}</div>
+        <span class="book-type-tag">${esc(b.type)}</span>
+      </div>
+      <div class="book-actions">
+        <button class="btn-icon delete" onclick="event.stopPropagation();openConfirm(${b.id})">删除</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function renderGroupView(main) {
+  const groups = {};
+  books.forEach(b => {
+    if (!groups[b.type]) groups[b.type] = [];
+    groups[b.type].push(b);
+  });
+  let html = '<div class="group-view">';
+  for (const type in groups) {
+    html += `<div class="group-section">
+      <div class="group-header" onclick="this.parentElement.querySelector('.group-body').classList.toggle('group-empty');this.parentElement.querySelector('.group-body').style.display=this.parentElement.querySelector('.group-body').style.display==='none'?'block':'none'">
+        <h3>${esc(type)}</h3>
+        <span class="group-count">${groups[type].length} 本</span>
+      </div>
+      <div class="group-body">`;
+    groups[type].forEach(b => {
+      html += `<div class="book-card" onclick="openDetail(${b.id})" style="border-bottom:1px solid #f0f0f0;border:none;border-radius:0;margin:0 -20px;padding:12px 20px">
+        <div class="book-info">
+          <div class="book-title">${esc(b.title)}</div>
+          <div class="book-author">${esc(b.author)}</div>
+        </div>
+        <div class="book-actions">
+          <button class="btn-icon delete" onclick="event.stopPropagation();openConfirm(${b.id})">删除</button>
+        </div>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Add Modal
+function openAddModal() {
+  document.getElementById('addModal').classList.add('show');
+  document.getElementById('titleError').classList.remove('show');
+  document.getElementById('typeError').classList.remove('show');
+  document.getElementById('authorError').classList.remove('show');
+  document.getElementById('bookTitleInput').value = '';
+  document.getElementById('bookTypeInput').value = '';
+  document.getElementById('bookAuthorInput').value = '';
+  document.getElementById('bookDescInput').value = '';
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+function submitBook() {
+  const title = document.getElementById('bookTitleInput').value.trim();
+  const type = document.getElementById('bookTypeInput').value.trim();
+  const author = document.getElementById('bookAuthorInput').value.trim();
+  const desc = document.getElementById('bookDescInput').value.trim();
+  let valid = true;
+  if (!title) { document.getElementById('titleError').classList.add('show'); valid = false; } else { document.getElementById('titleError').classList.remove('show'); }
+  if (!type) { document.getElementById('typeError').classList.add('show'); valid = false; } else { document.getElementById('typeError').classList.remove('show'); }
+  if (!author) { document.getElementById('authorError').classList.add('show'); valid = false; } else { document.getElementById('authorError').classList.remove('show'); }
+  if (!valid) return;
+  const id = Date.now();
+  books.push({ id, title, type, author, desc });
+  closeAddModal();
+  showToast('添加成功', 'success');
+  currentState = 'list';
+  render();
+}
+
+// Confirm Delete
+function openConfirm(id) {
+  deleteTargetId = id;
+  document.getElementById('confirmDelete').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmDelete').classList.remove('show'); deleteTargetId = null; }
+function confirmDeleteBook() {
+  if (deleteTargetId) {
+    books = books.filter(b => b.id !== deleteTargetId);
+    showToast('删除成功', 'success');
+  }
+  closeConfirm();
+  closeDetail();
+  render();
+}
+
+// Detail Panel
+function openDetail(id) {
+  const b = books.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('detailTitle').textContent = b.title;
+  let meta = '';
+  meta += `<span class="type">${esc(b.type)}</span>`;
+  if (b.author) meta += `<span class="author">${esc(b.author)}</span>`;
+  document.getElementById('detailMeta').innerHTML = meta;
+  document.getElementById('detailDesc').textContent = b.desc || '暂无简介';
+  document.getElementById('detailOverlay').classList.add('show');
+  deleteTargetId = id;
+}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('show'); }
+function deleteFromDetail() { openConfirm(deleteTargetId); }
+
+// Toast
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2000);
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
