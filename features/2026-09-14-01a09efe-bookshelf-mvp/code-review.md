@@ -75,3 +75,41 @@
 - 🔴 必须修改 **1** 项（不通过）
 - 🟡 建议修改 **3** 项
 - 🟢 可选优化 **2** 项
+
+---
+
+## 增量复审（复审 #1）
+
+- **增量复审时间**：2026-09-15
+- **上次审查 head SHA**：`fa5e0b5d28ea3f6c3ff5dfec4acd36627b6deccc`
+- **新候选 SHA**：`95bedbc25184d31fb0efca83166cfc1c5808d91f`
+- **变更范围**：`server/src/index.ts`、`client/__tests__/e2e/bookshelf.e2e.test.ts`、`features/2026-09-14-01a09efe-bookshelf-mvp/requirements.md`
+
+### 增量变更核查
+
+| 变更项 | 对应原问题 | 审查结论 |
+|--------|-----------|---------|
+| `server/src/index.ts`：`createDb()` → `getDb()`，切换为持久化文件数据库 | 🔴 必须修改 | ✅ 已正确修复。`getDb()` 使用 `server/data/bookshelf.db` 文件路径，服务重启后数据保留；API 测试仍使用 `createDb()` 内存数据库，隔离不受影响 |
+| `client/__tests__/e2e/bookshelf.e2e.test.ts`：F04-AC03 改为 mock 注入空简介书籍 + 无条件断言 | 🟡 建议修改 | ✅ 已正确修复。新增 `mockBooks` helper，F04-AC03 注入 `description: ''` 数据并直接断言 `expect(page.locator('.detail-desc')).toContainText('暂无简介')`，条件跳过漏洞消除 |
+| `client/__tests__/e2e/bookshelf.e2e.test.ts`：新增 F03-AC03、F03-AC04 E2E 测试 | 🟡 建议修改 | ✅ 已正确补充。F03-AC03 验证单类型数据只出现 1 个分组；F03-AC04 在分组视图下添加新类型书验证新分组出现，逻辑清晰 |
+| `requirements.md`：F02-AC05 HTTP 状态码 200 → 201 | 🟡 建议修改 | ✅ 已正确更新，需求文档与后端实现一致 |
+
+### 新增问题
+
+无新增 🔴 或 🟡 问题。
+
+### 遗留未解决项
+
+| 级别 | 位置 | 说明 |
+|------|------|------|
+| 🟢 可选优化 | `features/.../technical-design.md`（项目结构章节） | 设计文档组件文件结构与实际实现不符（`BookList.tsx`/`BookGroup.tsx`/`ViewToggle.tsx` 均在 `BookViews.tsx` 中），属可选，不影响通过 |
+
+### 增量复审结论
+
+**通过** ✅
+
+本次修复提交（`95bedbc25184d31fb0efca83166cfc1c5808d91f`）已解决初次审查的全部 🔴 必须修改问题及 3 项 🟡 建议修改问题。全部 24 条验收条件测试覆盖完整，无新增必须修改项。
+
+- 🔴 必须修改 **0** 项
+- 🟡 建议修改 **0** 项
+- 🟢 可选优化 **1** 项（遗留，不影响通过）
