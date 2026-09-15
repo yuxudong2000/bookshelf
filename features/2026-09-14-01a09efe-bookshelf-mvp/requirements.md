@@ -54,7 +54,7 @@
 - F02-AC02：Given 添加表单已打开 When 用户填写书名、类型和作者并提交 Then 书籍成功添加到书架列表中（UI E2E + 黑盒 API）
 - F02-AC03：Given 添加表单已打开 When 用户未填写书名就提交 Then 表单提示「书名不能为空」并阻止提交（UI E2E）
 - F02-AC04：Given 添加表单已打开 When 用户未填写作者就提交 Then 表单提示「作者不能为空」并阻止提交（UI E2E）
-- F02-AC05：Given 用户提交了添加请求 When 后端 API 处理成功（返回 200） Then 书架列表实时刷新并包含新书（UI E2E + 黑盒 API）
+- F02-AC05：Given 用户提交了添加请求 When 后端 API 处理成功（返回 201） Then 书架列表实时刷新并包含新书（UI E2E + 黑盒 API）
 - F02-AC06：Given 用户提交了添加请求 When 后端 API 处理失败（返回非 200） Then 显示错误提示「添加失败，请重试」（UI E2E）
 
 ### 功能点 F03：类型分组

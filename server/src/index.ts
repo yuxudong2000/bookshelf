@@ -1,6 +1,6 @@
 import express from 'express'
 import cors from 'cors'
-import { createDb } from './db.js'
+import { getDb } from './db.js'
 import { createBooksRouter } from './routes/books.js'
 import { errorHandler } from './middleware/error.js'
 
@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
-const db = createDb()
+const db = getDb()
 app.use('/api', createBooksRouter(db))
 
 app.use(errorHandler)

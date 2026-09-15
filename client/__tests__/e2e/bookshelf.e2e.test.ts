@@ -1,7 +1,23 @@
 import { test, expect } from '@playwright/test'
 
+const MOCK_BOOKS = [
+  { id: 1, title: '三体', type: '科技', author: '刘慈欣', description: '科幻小说', created_at: '2026-01-01' },
+  { id: 2, title: '百年孤独', type: '文学', author: '马尔克斯', description: '魔幻现实主义', created_at: '2026-01-01' },
+]
+
+function mockBooks(page: import('@playwright/test').Page, books = MOCK_BOOKS) {
+  return page.route('**/api/books', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, body: JSON.stringify({ books }) })
+    } else {
+      await route.continue()
+    }
+  })
+}
+
 test.describe('F01: 书架总览', () => {
   test('F01-AC01: 书架中有书籍时显示所有书籍列表', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     const cards = page.locator('.book-card')
@@ -18,6 +34,7 @@ test.describe('F01: 书架总览', () => {
   })
 
   test('F01-AC03: 每本书展示书名、类型标签和作者', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     const firstCard = page.locator('.book-card').first()
@@ -56,7 +73,7 @@ test.describe('F02: 书籍添加', () => {
     await page.fill('input[placeholder="请输入作者"]', '测试作者')
     await page.click('.btn-submit')
     await expect(page.locator('.toast.success')).toBeVisible()
-    await expect(page.locator('.book-card').filter({ hasText: '测试书籍' })).toBeVisible()
+    await expect(page.locator('.book-card').filter({ hasText: '测试书籍' }).first()).toBeVisible()
   })
 
   test('F02-AC03: 书名为空时提示校验错误', async ({ page }) => {
@@ -97,6 +114,7 @@ test.describe('F02: 书籍添加', () => {
 
 test.describe('F03: 类型分组', () => {
   test('F03-AC01: 切换到分组视图时按类型分组', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.click('.view-toggle button:has-text("分组")')
@@ -105,6 +123,7 @@ test.describe('F03: 类型分组', () => {
   })
 
   test('F03-AC02: 列表视图和分组视图切换', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.click('.view-toggle button:has-text("分组")')
@@ -114,6 +133,7 @@ test.describe('F03: 类型分组', () => {
   })
 
   test('F03-AC05: 每个分组标题旁显示书籍数量', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.click('.view-toggle button:has-text("分组")')
@@ -121,10 +141,41 @@ test.describe('F03: 类型分组', () => {
     await expect(count).toBeVisible()
     await expect(count).toContainText('本')
   })
+
+  test('F03-AC03: 只有一种类型时不出现空分组', async ({ page }) => {
+    await mockBooks(page, [
+      { id: 1, title: '三体', type: '科技', author: '刘慈欣', description: '', created_at: '2026-01-01' }
+    ])
+    await page.goto('/')
+    await page.waitForSelector('.book-card')
+    await page.click('.view-toggle button:has-text("分组")')
+    const sections = page.locator('.group-section')
+    expect(await sections.count()).toBe(1)
+    await expect(sections.filter({ hasText: '科技' })).toBeVisible()
+  })
+
+  test('F03-AC04: 添加新类型书籍后分组视图出现新分组', async ({ page }) => {
+    await mockBooks(page)
+    await page.goto('/')
+    await page.waitForSelector('.book-card')
+    await page.click('.view-toggle button:has-text("分组")')
+    const countBefore = await page.locator('.group-section').count()
+    await page.click('.btn-add')
+    await page.fill('input[placeholder="请输入书名"]', '新类型书')
+    await page.fill('input[placeholder="请输入书籍类型"]', '唯一新类型XYZ')
+    await page.fill('input[placeholder="请输入作者"]', '新作者')
+    await page.click('.btn-submit')
+    await expect(page.locator('.toast.success')).toBeVisible()
+    await page.click('.view-toggle button:has-text("分组")')
+    const countAfter = await page.locator('.group-section').count()
+    expect(countAfter).toBeGreaterThan(countBefore)
+    await expect(page.locator('.group-section').filter({ hasText: '唯一新类型XYZ' })).toBeVisible()
+  })
 })
 
 test.describe('F04: 书籍详情', () => {
   test('F04-AC01: 点击书籍显示详情', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.locator('.book-card').first().click()
@@ -135,6 +186,7 @@ test.describe('F04: 书籍详情', () => {
   })
 
   test('F04-AC02: 关闭详情回到列表', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.locator('.book-card').first().click()
@@ -145,19 +197,19 @@ test.describe('F04: 书籍详情', () => {
   })
 
   test('F04-AC03: 简介为空时显示暂无简介', async ({ page }) => {
+    await mockBooks(page, [
+      { id: 1, title: '无简介书', type: '测试', author: '作者', description: '', created_at: '2026-01-01' }
+    ])
     await page.goto('/')
     await page.waitForSelector('.book-card')
-    await page.locator('.book-card').filter({ hasNotText: '' }).first().click()
-    const desc = page.locator('.detail-desc')
-    const text = await desc.textContent()
-    if (text?.includes('暂无简介')) {
-      expect(text).toContain('暂无简介')
-    }
+    await page.locator('.book-card').first().click()
+    await expect(page.locator('.detail-desc')).toContainText('暂无简介')
   })
 })
 
 test.describe('F05: 书籍删除', () => {
   test('F05-AC01: 触发删除弹出确认提示', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     await page.locator('.book-card .btn-icon.delete').first().click()
@@ -166,6 +218,14 @@ test.describe('F05: 书籍删除', () => {
   })
 
   test('F05-AC02: 确认删除后书籍移除', async ({ page }) => {
+    await mockBooks(page)
+    await page.route('**/api/books/*', async route => {
+      if (route.request().method() === 'DELETE') {
+        await route.fulfill({ status: 200, body: JSON.stringify({ success: true }) })
+      } else {
+        await route.continue()
+      }
+    })
     await page.goto('/')
     await page.waitForSelector('.book-card')
     const countBefore = await page.locator('.book-card').count()
@@ -177,6 +237,7 @@ test.describe('F05: 书籍删除', () => {
   })
 
   test('F05-AC03: 取消删除后书籍保留', async ({ page }) => {
+    await mockBooks(page)
     await page.goto('/')
     await page.waitForSelector('.book-card')
     const countBefore = await page.locator('.book-card').count()
@@ -187,6 +248,7 @@ test.describe('F05: 书籍删除', () => {
   })
 
   test('F05-AC05: 后端删除失败时显示错误提示', async ({ page }) => {
+    await mockBooks(page)
     await page.route('**/api/books/*', async route => {
       if (route.request().method() === 'DELETE') {
         await route.fulfill({ status: 500, body: JSON.stringify({ error: '删除失败，请重试' }) })
